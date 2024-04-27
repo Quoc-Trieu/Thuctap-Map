@@ -1,8 +1,9 @@
 import {View, StyleSheet, TextInput} from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import React, {useState} from 'react';
-import Mapbox from '@rnmapbox/maps';
+import Mapbox, {LineJoin} from '@rnmapbox/maps';
 import axios from 'axios';
+import coverageToGeoJSON from '@utils/coverageToGeoJSON';
 
 const query = {
   api_key: 'efA3y8Un1klQqgeeNgVWBliArEjnY7dk2TGHbGUd',
@@ -11,7 +12,22 @@ const query = {
 const Map = () => {
   const [coordinates, setCoordinates] = useState([0, 0]);
   const [coordinatesToMove, setCoordinatesToMove] = useState([0, 0]);
+  const [move, setMove] = useState(false);
+  const [routes, setRoutes] = useState([]);
   const [search, setSearch] = useState('');
+
+  const onMove = async () => {
+    // const url = encodeURI(
+    //   `https://rsapi.goong.io/Direction?origin=${coordinates[0]},${coordinates[1]}&destination=${coordinatesToMove[1]},${coordinatesToMove[0]}&alternatives=true&api_key=${query.api_key}`,
+    // );
+    const url = encodeURI(
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates[1]},${coordinates[0]};${coordinatesToMove[0]},${coordinatesToMove[1]}?alternatives=true&steps=true&banner_instructions=true&geometries=geojson&overview=full&access_token=pk.eyJ1IjoiZGVzcGxheXNoaWRvIiwiYSI6ImNsdmczM2MxZTBzOXAybnQ3bWJhY2ZtM3oifQ.yyLX1kqEpIbD0KK0RCCHKQ`,
+    );
+    const response = await axios.get(url);
+    const data = response.data;
+    // @ts-ignore
+    setRoutes(coverageToGeoJSON(data));
+  };
 
   const findLocation = async () => {
     Geolocation.getCurrentPosition(
@@ -22,6 +38,7 @@ const Map = () => {
         ]);
       },
       error => console.log(error),
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
     );
     const url = encodeURI(
       `https://rsapi.goong.io/Place/AutoComplete?api_key=${query.api_key}&input=${search}&limit=1&location=${coordinates[1]},${coordinates[0]}`,
@@ -56,7 +73,7 @@ const Map = () => {
         styleURL={
           'https://tiles.goong.io/assets/goong_map_web.json?api_key=0nDbhIUVFRBY1gRKKlUwMzNi1EMRkXvj3efUBDWO'
         }
-        zoomEnabled={false}
+        zoomEnabled={true}
         logoEnabled={false}
         compassEnabled={true}
         attributionEnabled={false}
@@ -76,12 +93,39 @@ const Map = () => {
             />
             {/* @ts-ignore */}
             <Mapbox.PointAnnotation
-              id={'pointAnnotation'}
+              id="pointAnnotation"
               coordinate={coordinatesToMove}
+              onSelected={() => {
+                setMove(true);
+                onMove();
+              }}
             />
           </>
         )}
-        <Mapbox.UserLocation visible={true} animated={true} />
+        {move ? (
+          <>
+            {/* @ts-ignore */}
+            <Mapbox.ShapeSource id="StreetLine1" shape={routes}>
+              {/* // @ts-ignore */}
+              <Mapbox.LineLayer
+                id="line1"
+                // eslint-disable-next-line react-native/no-inline-styles
+                style={{
+                  lineColor: 'red',
+                  lineWidth: 7.5,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                  lineOpacity: 0.3,
+                }}
+              />
+            </Mapbox.ShapeSource>
+          </>
+        ) : null}
+        <Mapbox.UserLocation
+          visible={true}
+          animated={true}
+          androidRenderMode="compass"
+        />
       </Mapbox.MapView>
     </View>
   );
