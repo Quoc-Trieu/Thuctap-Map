@@ -6,37 +6,70 @@ import {
   Image,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import Mapbox from '@rnmapbox/maps';
 import axios from 'axios';
-import coverageToGeoJSON from '@utils/coverageToGeoJSON';
+import {getCoodinatesFromResponse} from '@utils/coverageToGeoJSON';
 import {findCenterPoint, findZoomFromTwoPoints} from '@utils/findZoom';
+import {useStore} from '../store';
+import BottomSheet from '@components/BottomSheet';
+
+const API_KEY = 'f3aa5d53-bbc9-43ea-bc64-e5e398ccff99';
 
 const query = {
   api_key: 'efA3y8Un1klQqgeeNgVWBliArEjnY7dk2TGHbGUd',
 };
 
-const Map = () => {
+const Map = ({navigation}: {navigation: any}) => {
   const [coordinates, setCoordinates] = useState([0, 0]);
   const [coordinatesToMoveCamera, setCoordinatesToMoveCamera] = useState([
     106, 10,
   ]);
   const [coordinatesToMove, setCoordinatesToMove] = useState([0, 0]);
-  const [move, setMove] = useState(false);
-  const [routes, setRoutes] = useState([]);
+  // @ts-ignore
+  const [move, setMove] = useStore(state => [state.move, state.setMove]);
+  // @ts-ignore
+  const [setReadyToMove] = useStore(state => [state.setReadyToMove]);
+  const [routes, setRoutes] = useState(undefined);
   const [search, setSearch] = useState('');
+  // @ts-ignore
+  const [setDistance, setTotalTime] = useStore(state => [
+    // @ts-ignore
+    state.setDistance,
+    // @ts-ignore
+    state.setTotalTime,
+  ]);
+  // @ts-ignore
+  const [setSteps] = useStore(state => [state.setSteps]);
 
   const onMove = async () => {
+    if (
+      coordinates[0] === 0 &&
+      coordinates[1] === 0 &&
+      coordinatesToMove[0] === 0 &&
+      coordinatesToMove[1] === 0
+    ) {
+      return;
+    }
     // const url = encodeURI(
     //   `https://rsapi.goong.io/Direction?origin=${coordinates[0]},${coordinates[1]}&destination=${coordinatesToMove[1]},${coordinatesToMove[0]}&alternatives=true&api_key=${query.api_key}`,
     // );
+    // const url = encodeURI(
+    //   `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates[0]},${coordinates[1]};${coordinatesToMove[0]},${coordinatesToMove[1]}?alternatives=true&steps=true&banner_instructions=true&geometries=geojson&overview=full&access_token=pk.eyJ1IjoiZGVzcGxheXNoaWRvIiwiYSI6ImNsdmczM2MxZTBzOXAybnQ3bWJhY2ZtM3oifQ.yyLX1kqEpIbD0KK0RCCHKQ`,
+    // );
     const url = encodeURI(
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates[0]},${coordinates[1]};${coordinatesToMove[0]},${coordinatesToMove[1]}?alternatives=true&steps=true&banner_instructions=true&geometries=geojson&overview=full&access_token=pk.eyJ1IjoiZGVzcGxheXNoaWRvIiwiYSI6ImNsdmczM2MxZTBzOXAybnQ3bWJhY2ZtM3oifQ.yyLX1kqEpIbD0KK0RCCHKQ`,
+      `https://graphhopper.com/api/1/route?point=${coordinates[1]},${coordinates[0]}&point=${coordinatesToMove[1]},${coordinatesToMove[0]}&vehicle=scooter&locale=vi&instructions=true&points_encoded=false&key=${API_KEY}`,
     );
     const response = await axios.get(url);
+    if (response.data.paths.length === 0) {
+      return;
+    }
     const data = response.data;
+    setDistance(data.paths[0].distance);
+    setTotalTime(data.paths[0].time);
+    setSteps(data.paths[0].instructions);
     // @ts-ignore
-    setRoutes(coverageToGeoJSON(data));
+    setRoutes(getCoodinatesFromResponse(data));
   };
 
   const findLocation = async () => {
@@ -86,6 +119,11 @@ const Map = () => {
     );
   };
 
+  useEffect(() => {
+    onMove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [move]);
+
   return (
     <View style={styles.container}>
       <View style={styles.searchBox}>
@@ -96,46 +134,46 @@ const Map = () => {
           onFocus={() => {
             setCoordinatesToMoveCamera(coordinatesToMoveCamera);
             setMove(false);
+            if (
+              coordinatesToMove[0] !== 0 &&
+              coordinatesToMove[1] !== 0 &&
+              move
+            ) {
+            }
           }}
           onChange={e => {
             setSearch(e.nativeEvent.text);
           }}
           onEndEditing={async () => {
             await findLocation();
+            setReadyToMove(true);
           }}
         />
       </View>
       <Mapbox.MapView
         style={styles.container}
-        styleURL={
-          'https://tiles.goong.io/assets/goong_map_web.json?api_key=0nDbhIUVFRBY1gRKKlUwMzNi1EMRkXvj3efUBDWO'
-        }
+        // styleURL={
+        //   'https://tiles.goong.io/assets/goong_map_web.json?api_key=0nDbhIUVFRBY1gRKKlUwMzNi1EMRkXvj3efUBDWO'
+        // }
         zoomEnabled={true}
         logoEnabled={false}
         compassEnabled={true}
         compassViewMargins={{x: 10, y: 70}}
         attributionEnabled={false}
         // compassFadeWhenNorth={true}
-        scaleBarEnabled={false}>
+        // scaleBarEnabled={false}
+        scaleBarPosition={{bottom: 10, right: 10}}>
         <Mapbox.Camera
           zoomLevel={15}
           centerCoordinate={coordinatesToMoveCamera}
           animationMode={'flyTo'}
           allowUpdates
         />
-        {coordinatesToMove[0] !== 0 ? (
-          <>
-            {/* @ts-ignore */}
-            <Mapbox.PointAnnotation
-              id="pointAnnotation"
-              coordinate={coordinatesToMove}
-              onSelected={() => {
-                setMove(true);
-                onMove();
-              }}
-            />
-          </>
-        ) : null}
+        {/* @ts-ignore */}
+        <Mapbox.PointAnnotation
+          id="pointAnnotation"
+          coordinate={coordinatesToMove}
+        />
         {move ? (
           <>
             <Mapbox.Camera
@@ -184,6 +222,7 @@ const Map = () => {
           />
         </TouchableOpacity>
       </View>
+      <BottomSheet navigation={navigation} />
     </View>
   );
 };
