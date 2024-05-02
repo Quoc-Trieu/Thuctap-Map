@@ -7,7 +7,7 @@
       "@data/*": ["./src/data/*"],
       "@utils/*": ["./src/utils/*"],
       "@screens/*": ["./src/screens/*"],
-      "@navigations/*": ["src/navigations/*"],
+      "@navigations/*": ["./src/navigations/*"],
       "@assets/*": ["./src/assets/*"],
       "@sevices/*": ["./src/sevices/*"]
     }

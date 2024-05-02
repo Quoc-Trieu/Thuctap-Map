@@ -2,12 +2,14 @@ import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import React from 'react';
 import {Actionsheet, useDisclose} from 'native-base';
 import {useStore} from '../store';
-import {metersToKm, msToTime} from '@utils/handleData';
+import {metersToKm, msToTime, secondsToTime} from '@utils/handleData';
+import {useRoute} from '@react-navigation/native';
 
 const BottomSheet = ({navigation}: {navigation: any}) => {
+  const route = useRoute();
   const {isOpen, onClose, onOpen} = useDisclose();
   // @ts-ignore
-  const [setMove] = useStore(state => [state.setMove]);
+  const [move, setMove] = useStore(state => [state.move, state.setMove]);
   const [readyToMove] = useStore(state => [state.readyToMove]);
   const [distance, totalTime] = useStore(state => [
     state.distance,
@@ -84,7 +86,7 @@ const BottomSheet = ({navigation}: {navigation: any}) => {
               justifyContent: 'flex-start',
             }}>
             <Text style={{fontSize: 24, color: 'green'}}>
-              {msToTime(totalTime)}
+              {secondsToTime(totalTime)}
             </Text>
             <Text style={{fontSize: 24}}>
               {' (' + metersToKm(distance) + ' Km' + ')'}
@@ -127,7 +129,6 @@ const BottomSheet = ({navigation}: {navigation: any}) => {
                 marginLeft: 10,
               }}
               onPress={() => {
-                setMove(false);
                 onClose();
                 navigation.navigate('Steps');
               }}>

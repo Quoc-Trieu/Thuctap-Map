@@ -16,10 +16,6 @@ import BottomSheet from '@components/BottomSheet';
 
 const API_KEY = 'f3aa5d53-bbc9-43ea-bc64-e5e398ccff99';
 
-const query = {
-  api_key: 'efA3y8Un1klQqgeeNgVWBliArEjnY7dk2TGHbGUd',
-};
-
 const Map = ({navigation}: {navigation: any}) => {
   const [coordinates, setCoordinates] = useState([0, 0]);
   const [coordinatesToMoveCamera, setCoordinatesToMoveCamera] = useState([
@@ -54,20 +50,31 @@ const Map = ({navigation}: {navigation: any}) => {
     // const url = encodeURI(
     //   `https://rsapi.goong.io/Direction?origin=${coordinates[0]},${coordinates[1]}&destination=${coordinatesToMove[1]},${coordinatesToMove[0]}&alternatives=true&api_key=${query.api_key}`,
     // );
-    // const url = encodeURI(
-    //   `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates[0]},${coordinates[1]};${coordinatesToMove[0]},${coordinatesToMove[1]}?alternatives=true&steps=true&banner_instructions=true&geometries=geojson&overview=full&access_token=pk.eyJ1IjoiZGVzcGxheXNoaWRvIiwiYSI6ImNsdmczM2MxZTBzOXAybnQ3bWJhY2ZtM3oifQ.yyLX1kqEpIbD0KK0RCCHKQ`,
-    // );
     const url = encodeURI(
-      `https://graphhopper.com/api/1/route?point=${coordinates[1]},${coordinates[0]}&point=${coordinatesToMove[1]},${coordinatesToMove[0]}&vehicle=scooter&locale=vi&instructions=true&points_encoded=false&key=${API_KEY}`,
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates[0]},${coordinates[1]};${coordinatesToMove[0]},${coordinatesToMove[1]}?alternatives=true&steps=true&banner_instructions=true&geometries=geojson&language=vi&overview=full&access_token=pk.eyJ1IjoiZGVzcGxheXNoaWRvIiwiYSI6ImNsdmczM2MxZTBzOXAybnQ3bWJhY2ZtM3oifQ.yyLX1kqEpIbD0KK0RCCHKQ`,
     );
+    console.log(url);
+    // const url = encodeURI(
+    //   `https://graphhopper.com/api/1/route?point=${coordinates[1]},${coordinates[0]}&point=${coordinatesToMove[1]},${coordinatesToMove[0]}&vehicle=scooter&locale=vi&instructions=true&points_encoded=false&key=${API_KEY}`,
+    // );
     const response = await axios.get(url);
-    if (response.data.paths.length === 0) {
+    const data = response.data;
+    if (response.data.code !== 'Ok') {
       return;
     }
-    const data = response.data;
-    setDistance(data.paths[0].distance);
-    setTotalTime(data.paths[0].time);
-    setSteps(data.paths[0].instructions);
+    const distanceTotal = data.routes[0].distance;
+    const totalTime = data.routes[0].duration;
+    setDistance(distanceTotal);
+    setTotalTime(totalTime);
+    // @ts-ignore
+    const steps = data.routes[0].legs[0].steps;
+    const newSteps = [];
+    steps.forEach((step: any) => {
+      const {maneuver, duration, distance} = step;
+      const {instruction} = maneuver;
+      newSteps.push({text: instruction, duration, distance});
+    });
+    setSteps(newSteps);
     // @ts-ignore
     setRoutes(getCoodinatesFromResponse(data));
   };
@@ -87,23 +94,13 @@ const Map = ({navigation}: {navigation: any}) => {
       {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
     );
     const url = encodeURI(
-      `https://rsapi.goong.io/Place/AutoComplete?api_key=${query.api_key}&input=${search}&limit=1&location=${coordinates[0]},${coordinates[1]}`,
+      `https://nominatim.openstreetmap.org/search?q=${search}&format=json&polygon_kml=1&addressdetails=1&limit=1`,
     );
     const response = await axios.get(url);
-    const {status} = response.data;
-    if (status !== 'OK') {
-      return;
-    }
     const data = response.data;
-    const {place_id} = data.predictions[0];
-    const placeUrl = encodeURI(
-      `https://rsapi.goong.io/Place/Detail?api_key=${query.api_key}&place_id=${place_id}`,
-    );
-    const placeResponse = await axios.get(placeUrl);
-    const placeData = placeResponse.data;
-    const {lat, lng} = placeData.result.geometry.location;
-    setCoordinatesToMoveCamera([lng, lat]);
-    setCoordinatesToMove([lng, lat]);
+    const {lat, lon} = data[0];
+    setCoordinatesToMoveCamera([lon, lat]);
+    setCoordinatesToMove([lon, lat]);
   };
 
   const getMyLocation = () => {
@@ -159,10 +156,11 @@ const Map = ({navigation}: {navigation: any}) => {
         logoEnabled={false}
         compassEnabled={true}
         compassViewMargins={{x: 10, y: 70}}
-        attributionEnabled={false}
+        // attributionEnabled={false}
         // compassFadeWhenNorth={true}
         // scaleBarEnabled={false}
-        scaleBarPosition={{bottom: 10, right: 10}}>
+        attributionPosition={{bottom: 20, right: 20}}
+        scaleBarPosition={{bottom: 15, right: 50}}>
         <Mapbox.Camera
           zoomLevel={15}
           centerCoordinate={coordinatesToMoveCamera}

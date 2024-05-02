@@ -32,8 +32,8 @@ export function getCoodinatesFromResponse(input: any) {
       },
     ],
   };
-  const {paths} = input;
-  const {points} = paths[0];
-  Geometry.features[0].geometry = points;
+  const {routes} = input;
+  const {geometry} = routes[0];
+  Geometry.features[0].geometry = geometry;
   return Geometry;
 }
