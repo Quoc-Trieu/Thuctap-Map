@@ -1,8 +1,7 @@
 import React, {useEffect} from 'react';
-import {LogBox, SafeAreaView, StyleSheet, View} from 'react-native';
-import Map from '@screens/Map';
+import {LogBox, SafeAreaView, StyleSheet} from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
-import BottomSheet from '@components/BottomSheet';
+import stackNavigation from './src/navigations/stackNavigation';
 import {NativeBaseProvider} from 'native-base';
 
 MapboxGL.setAccessToken(
@@ -20,8 +19,7 @@ export default function App(): React.JSX.Element {
   return (
     <NativeBaseProvider>
       <SafeAreaView style={styles.container}>
-        <Map />
-        {/* <BottomSheet /> */}
+        {stackNavigation()}
       </SafeAreaView>
     </NativeBaseProvider>
   );
@@ -29,7 +27,10 @@ export default function App(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     flex: 1,
+  },
+  mapContainer: {
+    height: '100%',
   },
 });
